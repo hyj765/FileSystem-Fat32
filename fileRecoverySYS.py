@@ -289,7 +289,9 @@ def DiskTypeCheck(path):
 # mbr -> vbr -> fat1 -> data directory -> data area -> Recovering 
 
 if __name__ == "__main__" :
-    Drive = '\\\\.\\PhysicalDrive2'
+
+    number = sys.argv[1]
+    Drive = '\\\\.\\PhysicalDrive'+str(number)
     start = time.time()
     try : 
         Dtype = DiskTypeCheck(Drive) 
