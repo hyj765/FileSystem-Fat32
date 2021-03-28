@@ -54,7 +54,7 @@ def footerSelection(headersig):
     if headersig.find(b'ffd8ffe000104a464946') > -1 or headersig.find(b'ffd8ffe800104a464946') > -1 :
         return b'ffd9' , 'JPEG' 
     if headersig.find(b'474946383761')> -1 or headersig.find(b'474946383961') > -1 :
-        return b'003b' , 'GIF'
+        return 'N' , 'GIF'
     elif headersig.find(b'89504e470d0a1a0a0000') > -1 :
         return b'49454e44ae426082' , 'png'
     elif headersig.find(b'504b030400000008') > -1 :
