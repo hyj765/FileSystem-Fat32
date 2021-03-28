@@ -290,8 +290,7 @@ def DiskTypeCheck(path):
 
 if __name__ == "__main__" :
 
-    number = sys.argv[1]
-    Drive = '\\\\.\\PhysicalDrive'+str(number)
+    Drive = sys.argv[1] #drive number ////.//physicaldrive number
     start = time.time()
     try : 
         Dtype = DiskTypeCheck(Drive) 
