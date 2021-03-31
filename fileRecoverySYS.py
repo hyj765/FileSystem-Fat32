@@ -175,12 +175,8 @@ def RFlist_Mk(directoryEntry_list):
     ReCoverR=ClusterAnalyze(LiveFL_List,DeletedFL_list)
     for each in directoryEntry_list: 
         for te in ReCoverR:
-            if te == each[4]: 
-                if te not in Clustli:
-                    Clustli.append(te)
-                    ResultT[te]=each
-                else :
-                    ResultT[te]=each
+            if te == each[4] : 
+                ResultT[te]=each
 
     print("클러스터들 : ",Clustli)
     return ResultT.values()
