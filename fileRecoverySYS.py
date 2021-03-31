@@ -4,6 +4,7 @@ import sys
 import struct
 import time
 
+#중복데이터 복구 문제 
 global number
 global Ssector # 전체 섹터 값
 global Tsector 
@@ -43,6 +44,10 @@ def MBRStartSet(drivePath):
     MBRREADER(drivePath)
     VBRREADER(drivePath)
 
+def GPTStartSet(drivePath):
+    GPTREADER(drivePath)
+    VBRREADER(drivePath)
+
 def littleTobig(hexdata):
     DataArray = bytearray.fromhex(hexdata)
     DataArray.reverse()
@@ -51,9 +56,11 @@ def littleTobig(hexdata):
     return conData
 
 def footerSelection(headersig):
-    if headersig.find(b'ffd8ffe000104a464946') > -1 or headersig.find(b'ffd8ffe800104a464946') > -1 :
+    if headersig.find(b'ffd8ffe000104a464946') > -1 or headersig.find(b'ffd8ffe800104a464946') > -1:
         return b'ffd9' , 'JPEG' 
-    if headersig.find(b'474946383761')> -1 or headersig.find(b'474946383961') > -1 :
+    elif headersig.find(b'ffd8ffe1') > -1 :
+        return 'N' , 'jpg'
+    elif headersig.find(b'474946383761')> -1 or headersig.find(b'474946383961') > -1 :
         return 'N' , 'GIF'
     elif headersig.find(b'89504e470d0a1a0a0000') > -1 :
         return b'49454e44ae426082' , 'png'
@@ -74,7 +81,7 @@ def footerSelection(headersig):
     elif headersig.find(b'504b03041400060008') > -1:
         return 'N' , 'docx'
     else :
-        return 'N','Unknown'
+        return 'NO'
 
 def fileRecover(Curlotation,path,filelist):
 
@@ -85,7 +92,6 @@ def datamove(CurSector,path,fileList):
     f=open(path,'rb')
     fileL = clusterLotationCalc(littleTobig(fileList[4]))
     CurLotation = (CurSector+fileL)*512
-    print(CurLotation/512)
     f.seek(CurLotation)
     HeaderD = f.read(0x0A)
     f.close()
@@ -93,13 +99,16 @@ def datamove(CurSector,path,fileList):
     print(headersig)
     result = footerSelection(headersig)
     print(result)
+    
     if result[0] != 'N':
         SignaturefileRecoverysystem(path,CurSector,fileList[4],result)
+    elif result[1] == 'O':
+        pass 
     else:    
         sizeRecovery(path,CurSector,fileList[4],fileList[2],result[1])
-    
+ 
 #if directory != : filerecovery else datamove
-
+#나중에 오는 걸로 해야함.
 def sizeRecovery(path,CurSector,fileLocation,size,Extention): 
     f=open(path,'rb')
     global number
@@ -108,7 +117,9 @@ def sizeRecovery(path,CurSector,fileLocation,size,Extention):
     Datasector = currentsector + filesector
     f.seek(Datasector*512)
     w = open('recoveringFile'+str(number)+'.'+Extention,'wb')
+    print(size)
     totalsize = littleTobig(size)
+    print(totalsize)
     while totalsize > 0 :
         if totalsize < 512 :
             Ddata = f.read(totalsize)
@@ -148,12 +159,13 @@ def SignaturefileRecoverysystem(path,CurSector,fileLocation,fileinfo): #fileexte
 
 def ClusterAnalyze(livelist,Deletelist):
     RCLt=list(set(Deletelist) - set(livelist))
-    return RCLt
+    return set(RCLt)
 
 def RFlist_Mk(directoryEntry_list):
     DeletedFL_list =[] 
     LiveFL_List = []
-    ResultT = []
+    ResultT = {}
+    Clustli = []
     for each in directoryEntry_list:
         if each[4] != '00000000':
             if each[1] != 'e5':
@@ -161,11 +173,17 @@ def RFlist_Mk(directoryEntry_list):
             else :
                 DeletedFL_list.append(each[4])           
     ReCoverR=ClusterAnalyze(LiveFL_List,DeletedFL_list)
-    for each in directoryEntry_list: #고쳐야할 부분
+    for each in directoryEntry_list: 
         for te in ReCoverR:
-            if te == each[4]:
-                ResultT.append(each)
-    return ResultT
+            if te == each[4]: 
+                if te not in Clustli:
+                    Clustli.append(te)
+                    ResultT[te]=each
+                else :
+                    ResultT[te]=each
+
+    print("클러스터들 : ",Clustli)
+    return ResultT.values()
  
 #e5 clust compare normal file location in cluster if cluster already used then false return
 
@@ -225,18 +243,17 @@ def dataAreaRead(path,dataDirectoryLo):
         slackChecker=slackCheck(check)
 
     ReCan_list=RFlist_Mk(Dir_listall)
-    curlocation=f.tell()
     f.close()
+    print(ReCan_list)
     if ReCan_list == [] :
         print("복구파일 할 수 있는 파일이 존재하지 않습니다.")
         exit(0)
     DataLotation = []
+    
     for each in ReCan_list:
         DataLotation.append(each) #반환 값이 file list가 되야한다.
 
-    print("DATALOTATION: ",DataLotation)
     fileRecover(dataDirectoryLo,path,DataLotation)
-    print("Seek lt:",curlocation)
 #디렉토리 추출 list in -> e5 추출 -> 활성파일 클러스터 추출 -> 위치 이동 후 -> 파일복구
 
 def MBRREADER(path):
@@ -272,8 +289,18 @@ def VBRREADER(path):
     CPS = littleTobig(BPBArea[26:28].decode('utf-8'))
     ReservedArea = littleTobig(BPBArea[28:32].decode('utf-8'))
     FATArea = littleTobig(BPBArea[72:76].decode('utf-8'))
+    print(FATArea)
+    
     DataAreaLotation=DataAreaCal(Ssector,ReservedArea,FATArea)
     dataAreaRead(path,DataAreaLotation)
+
+def GPTREADER(path):
+    global Ssector
+    f= open(path,'rb')
+    f.seek(1*512)
+    PriGPT=binascii.hexlify(f.read(512))
+    print(PriGPT)
+    #VBRSection=PriGPT[61:75]
 
 def DiskTypeCheck(path):
     f=open(path,'rb')
@@ -289,8 +316,7 @@ def DiskTypeCheck(path):
 # mbr -> vbr -> fat1 -> data directory -> data area -> Recovering 
 
 if __name__ == "__main__" :
-
-    Drive = sys.argv[1] #drive number ////.//physicaldrive number
+    Drive = '\\\\.\\PhysicalDrive2'
     start = time.time()
     try : 
         Dtype = DiskTypeCheck(Drive) 
@@ -301,5 +327,7 @@ if __name__ == "__main__" :
         print("해당 드라이브가 존재하지 않습니다.")
         exit(0)
     if Dtype == False:
-        MBRStartSet(Drive) #else GPTSET
+        MBRStartSet(Drive)
+    else :
+        GPTStartSet(Drive)
     print("작동시간 지금까진 : ",time.time() - start)
